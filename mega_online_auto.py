@@ -4,6 +4,7 @@ from flask import Flask
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
 from datetime import datetime
 
 app = Flask(__name__)
@@ -16,12 +17,31 @@ RESULT_LOG_FILE = "login_results.txt"
 
 def login_account(username, password, driver):
     try:
-        driver.get("https://example.com/login")
-        # Replace with actual login logic:
-        # driver.find_element(...).send_keys(username)
-        # driver.find_element(...).send_keys(password)
-        # driver.find_element(...).click()
-        return True  # Simulate success
+        driver.get("https://mega.nz/login")
+        time.sleep(2)  # Let the page load
+
+        # Fill in email
+        email_input = driver.find_element(By.ID, "login-name2")
+        email_input.clear()
+        email_input.send_keys(username)
+
+        # Fill in password
+        password_input = driver.find_element(By.ID, "login-password2")
+        password_input.clear()
+        password_input.send_keys(password)
+
+        # Click login button
+        login_button = driver.find_element(By.CSS_SELECTOR, ".login-button")
+        login_button.click()
+
+        time.sleep(5)  # Wait for redirect or error
+
+        # Check for success: redirected to file manager
+        if "fm" in driver.current_url:
+            return True
+        else:
+            return False
+
     except Exception as e:
         print(f"Exception for {username}: {e}")
         return False
