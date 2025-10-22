@@ -1,4 +1,5 @@
 import os
+import time
 from flask import Flask
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -11,6 +12,7 @@ CHROMEDRIVER_PATH = os.getenv("CHROMEDRIVER_PATH", "/usr/bin/chromedriver")
 LOG_FILE = os.getenv("LOGIN_FILE", "LOGS.txt")
 FAILED_LOGINS_FILE = os.getenv("FAILED_LOGINS_FILE", "failed_logins.txt")
 RETRY_LOG_DIR = os.getenv("RETRY_LOG_DIR", "retry_logs")
+RESULT_LOG_FILE = "login_results.txt"
 
 def login_account(username, password, driver):
     try:
@@ -25,6 +27,7 @@ def login_account(username, password, driver):
         return False
 
 def run_login_batch():
+    start_time = time.time()
     options = Options()
     options.add_argument("--headless")
     options.add_argument("--no-sandbox")
@@ -33,6 +36,9 @@ def run_login_batch():
     driver = webdriver.Chrome(service=service, options=options)
 
     failed_accounts = []
+    processed = 0
+    succeeded = 0
+    failed = 0
 
     try:
         with open(LOG_FILE, "r") as f:
@@ -44,15 +50,24 @@ def run_login_batch():
                 print(f"Attempting login for {username}")
                 success = login_account(username, password, driver)
                 timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                if success:
-                    with open(LOG_FILE, "a") as log:
-                        log.write(f"[{timestamp}] Login succeeded for {username}\n")
-                else:
-                    with open(FAILED_LOGINS_FILE, "a") as fail_log:
-                        fail_log.write(f"[{timestamp}] Login failed for {username}\n")
-                    failed_accounts.append((username, password))
+                processed += 1
+
+                with open(RESULT_LOG_FILE, "a") as result_log:
+                    if success:
+                        result_log.write(f"[{timestamp}] Login succeeded for {username}\n")
+                        succeeded += 1
+                    else:
+                        result_log.write(f"[{timestamp}] Login failed for {username}\n")
+                        with open(FAILED_LOGINS_FILE, "a") as fail_log:
+                            fail_log.write(f"[{timestamp}] Login failed for {username}\n")
+                        failed_accounts.append((username, password))
+                        failed += 1
+
     finally:
         driver.quit()
+
+    print(f"Processed {processed} accounts: {succeeded} succeeded, {failed} failed.")
+    print(f"Runtime: {round(time.time() - start_time, 2)} seconds")
 
     if failed_accounts:
         retry_failed_logins(failed_accounts)
