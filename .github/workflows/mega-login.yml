@@ -1,9 +1,9 @@
 name: Mega Auto Login
 
 on:
-  workflow_dispatch:  # Manual trigger from GitHub UI
+  workflow_dispatch:  # Manual trigger
   schedule:
-    - cron: '0 12 * * *'  # Runs daily at 12:00 UTC
+    - cron: '0 12 * * *'  # Daily at 12:00 UTC
 
 jobs:
   run-orchestration:
@@ -22,10 +22,13 @@ jobs:
         run: |
           pip install flask selenium
 
+      - name: Create log files if missing
+        run: |
+          touch LOGS.txt failed_logins.txt
+          mkdir -p retry_logs
+
       - name: Run orchestration
         env:
-          LOGIN_USER: ${{ secrets.LOGIN_USER }}
-          LOGIN_PASS: ${{ secrets.LOGIN_PASS }}
           CHROMEDRIVER_PATH: "/usr/bin/chromedriver"
           LOGIN_FILE: "LOGS.txt"
           FAILED_LOGINS_FILE: "failed_logins.txt"
