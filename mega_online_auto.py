@@ -20,21 +20,27 @@ RESULT_LOG_FILE = "login_results.txt"
 
 def login_account(username, password, driver):
     try:
-        driver.get("https://mega.nz/login?redirect=login")
+        driver.get("https://mega.nz/login")
 
-        # Inject JS to force visibility in headless mode
-        driver.execute_script("""
-            document.querySelector('input[placeholder="Your email address"]').style.display = 'block';
-            document.querySelector('input[placeholder="Password"]').style.display = 'block';
-        """)
-
+        # Reveal login form
         WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, "input[placeholder='Your email address']"))
+            EC.element_to_be_clickable((By.CLASS_NAME, "top-login-button"))
+        )
+        driver.find_element(By.CLASS_NAME, "top-login-button").click()
+        time.sleep(2)
+
+        # Wait for input fields
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "input[placeholder='Your email address']"))
         )
 
-        driver.find_element(By.CSS_SELECTOR, "input[placeholder='Your email address']").send_keys(username)
-        driver.find_element(By.CSS_SELECTOR, "input[placeholder='Password']").send_keys(password)
-        driver.find_element(By.CLASS_NAME, "login-button").click()
+        email_field = driver.find_element(By.CSS_SELECTOR, "input[placeholder='Your email address']")
+        password_field = driver.find_element(By.CSS_SELECTOR, "input[placeholder='Password']")
+        login_button = driver.find_element(By.CLASS_NAME, "login-button")
+
+        email_field.send_keys(username)
+        password_field.send_keys(password)
+        login_button.click()
         time.sleep(5)
 
         try:
