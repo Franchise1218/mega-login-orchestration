@@ -1,79 +1,29 @@
 import os
 import time
-import tempfile
-import subprocess
-from flask import Flask
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.alert import Alert
 from datetime import datetime
+from flask import Flask
+from playwright.sync_api import sync_playwright
 
 app = Flask(__name__)
 
-CHROMEDRIVER_PATH = os.getenv("CHROMEDRIVER_PATH", "/usr/bin/chromedriver")
 LOG_FILE = os.getenv("LOGIN_FILE", "LOGS.txt")
 FAILED_LOGINS_FILE = os.getenv("FAILED_LOGINS_FILE", "failed_logins.txt")
 RETRY_LOG_DIR = os.getenv("RETRY_LOG_DIR", "retry_logs")
 RESULT_LOG_FILE = "login_results.txt"
 
-# Log Chrome version for CI visibility
-print("Chrome version:", subprocess.getoutput("google-chrome --version"))
-
-def create_driver():
-    options = Options()
-    options.binary_location = "/usr/bin/google-chrome"
-    options.add_argument("--headless=new")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--disable-extensions")
-    options.add_argument("--disable-setuid-sandbox")
-    options.add_argument("--remote-debugging-port=9222")
-    options.add_argument("--window-size=1920,1080")
-    options.add_argument("--user-agent=Mozilla/5.0")
-
-    user_data_dir = tempfile.mkdtemp()
-    options.add_argument(f"--user-data-dir={user_data_dir}")
-
-    print("Launching ChromeDriver with options:", options.arguments)
-    service = Service(CHROMEDRIVER_PATH)
-    return webdriver.Chrome(service=service, options=options)
-
-def login_account(username, password, driver):
+def login_account(username, password, page):
     try:
-        driver.get("https://mega.nz/login")
+        page.goto("https://mega.nz/login", timeout=30000)
+        page.click(".top-login-button")
+        page.wait_for_selector("input[placeholder='Your email address']", timeout=10000)
 
-        WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.CLASS_NAME, "top-login-button"))
-        ).click()
-        time.sleep(2)
+        page.fill("input[placeholder='Your email address']", username)
+        page.fill("input[placeholder='Password']", password)
+        page.click(".login-button")
+        page.wait_for_timeout(5000)
 
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "input[placeholder='Your email address']"))
-        )
-
-        email_field = driver.find_element(By.CSS_SELECTOR, "input[placeholder='Your email address']")
-        password_field = driver.find_element(By.CSS_SELECTOR, "input[placeholder='Password']")
-        login_button = driver.find_element(By.CLASS_NAME, "login-button")
-
-        email_field.send_keys(username)
-        password_field.send_keys(password)
-        login_button.click()
-        time.sleep(5)
-
-        try:
-            WebDriverWait(driver, 3).until(EC.alert_is_present())
-            Alert(driver).accept()
-            time.sleep(2)
-        except:
-            pass
-
-        time.sleep(5)
-        return "cloud" in driver.current_url or "fm" in driver.current_url
+        current_url = page.url
+        return "cloud" in current_url or "fm" in current_url
 
     except Exception as e:
         print(f"Exception for {username}: {e}")
@@ -81,12 +31,14 @@ def login_account(username, password, driver):
 
 def run_login_batch():
     start_time = time.time()
-    driver = create_driver()
-
     failed_accounts = []
     processed = succeeded = failed = 0
 
-    try:
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        context = browser.new_context(viewport={"width": 1920, "height": 1080})
+        page = context.new_page()
+
         with open(LOG_FILE, "r") as f:
             for line in f:
                 line = line.strip()
@@ -94,7 +46,7 @@ def run_login_batch():
                     continue
                 username, password = line.split(",", 1)
                 print(f"Attempting login for {username}")
-                success = login_account(username, password, driver)
+                success = login_account(username, password, page)
                 timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 processed += 1
 
@@ -109,8 +61,7 @@ def run_login_batch():
                         failed_accounts.append((username, password))
                         failed += 1
 
-    finally:
-        driver.quit()
+        browser.close()
 
     print(f"Processed {processed} accounts: {succeeded} succeeded, {failed} failed.")
     print(f"Runtime: {round(time.time() - start_time, 2)} seconds")
@@ -120,12 +71,15 @@ def run_login_batch():
 
 def retry_failed_logins(failed_accounts):
     print("Starting retry phase...")
-    driver = create_driver()
 
-    try:
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        context = browser.new_context(viewport={"width": 1920, "height": 1080})
+        page = context.new_page()
+
         for username, password in failed_accounts:
             print(f"Retrying login for {username}")
-            success = login_account(username, password, driver)
+            success = login_account(username, password, page)
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             retry_log_path = os.path.join(RETRY_LOG_DIR, f"{username.replace('@', '_at_')}.txt")
             with open(retry_log_path, "a") as retry_log:
@@ -133,8 +87,8 @@ def retry_failed_logins(failed_accounts):
                     retry_log.write(f"[{timestamp}] Retry succeeded for {username}\n")
                 else:
                     retry_log.write(f"[{timestamp}] Retry failed for {username}\n")
-    finally:
-        driver.quit()
+
+        browser.close()
 
 @app.route("/run", methods=["GET"])
 def trigger_run():
