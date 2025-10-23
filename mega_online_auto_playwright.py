@@ -15,10 +15,15 @@ RESULT_LOG_FILE = "login_results.txt"
 
 def login_account(username, password, page):
     try:
+        # Clear cookies and session to prevent auto-login
         page.context.clear_cookies()
         page.goto("https://mega.nz/logout")
         page.wait_for_timeout(2000)
 
+        # Clear localStorage and sessionStorage
+        page.evaluate("localStorage.clear(); sessionStorage.clear();")
+
+        # Navigate to login page
         page.goto("https://mega.nz/login", timeout=30000)
         page.wait_for_selector("input#login-name2", timeout=15000)
 
