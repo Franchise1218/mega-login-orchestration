@@ -14,7 +14,8 @@ RESULT_LOG_FILE = "login_results.txt"
 def login_account(username, password, page):
     try:
         page.goto("https://mega.nz/login", timeout=30000)
-        page.click(".top-login-button")
+
+        # Skip clicking hidden button — go straight to login form
         page.wait_for_selector("input[placeholder='Your email address']", timeout=10000)
 
         page.fill("input[placeholder='Your email address']", username)
@@ -27,6 +28,8 @@ def login_account(username, password, page):
 
     except Exception as e:
         print(f"Exception for {username}: {e}")
+        print("Page content snapshot:")
+        print(page.content())
         return False
 
 def run_login_batch():
