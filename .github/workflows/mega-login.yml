@@ -1,4 +1,4 @@
-name: Mega Auto Login
+name: Mega Auto Login (Playwright)
 
 on:
   workflow_dispatch:
@@ -18,47 +18,20 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Install Chrome
-        continue-on-error: true
+      - name: Install Playwright and dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y wget unzip xvfb libxi6 libgconf-2-4 libnss3 libxss1 libasound2 fonts-liberation
-          wget -q -O chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-          sudo dpkg -i chrome.deb || true
-          sudo apt-get install -f -y
-
-      - name: Install ChromeDriver
-        run: |
-          set +e
-          CHROME_VERSION=$(google-chrome --version | grep -oP '\d+\.\d+\.\d+\.\d+')
-          echo "Detected Chrome version: $CHROME_VERSION"
-
-          if [ -z "$CHROME_VERSION" ]; then
-            echo "Chrome version not detected. Falling back to latest driver."
-            DRIVER_VERSION=$(curl -sS https://chromedriver.storage.googleapis.com/LATEST_RELEASE)
-          else
-            DRIVER_VERSION=$(curl -sS https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_VERSION || curl -sS https://chromedriver.storage.googleapis.com/LATEST_RELEASE)
-          fi
-
-          echo "Using ChromeDriver version: $DRIVER_VERSION"
-          wget -q https://chromedriver.storage.googleapis.com/$DRIVER_VERSION/chromedriver_linux64.zip
-          unzip chromedriver_linux64.zip
-          sudo mv chromedriver /usr/bin/chromedriver
-          sudo chmod +x /usr/bin/chromedriver
-
-      - name: Install Python dependencies
-        run: pip install flask selenium
+          pip install flask playwright
+          playwright install
 
       - name: Create log files if missing
         run: |
           touch LOGS.txt failed_logins.txt
           mkdir -p retry_logs
 
-      - name: Run orchestration with Xvfb
+      - name: Run orchestration
         env:
-          CHROMEDRIVER_PATH: "/usr/bin/chromedriver"
           LOGIN_FILE: "LOGS.txt"
           FAILED_LOGINS_FILE: "failed_logins.txt"
           RETRY_LOG_DIR: "retry_logs"
         run: |
-          xvfb-run --auto-servernum --server-args='-screen 0 1920x1080x24' python mega_online_auto.py
+          python mega_online_auto_playwright.py
