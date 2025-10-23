@@ -20,18 +20,18 @@ def login_account(username, password, page):
         page.wait_for_timeout(2000)
 
         page.goto("https://mega.nz/login", timeout=30000)
-        page.wait_for_selector("form.login-register-block, input[placeholder='Your email address']", timeout=15000)
+        page.wait_for_selector("input#login-name2", timeout=15000)
 
-        email_field = page.locator("input[placeholder='Your email address']")
-        if email_field.is_disabled():
-            print(f"{username} login field is disabled — possibly suspended.")
+        email_field = page.locator("input#login-name2")
+        if not email_field.is_visible() or email_field.is_disabled():
+            print(f"{username} login field is not usable — possibly suspended or hidden.")
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             with open(FLAGGED_LOGINS_FILE, "a") as flagged_log:
-                flagged_log.write(f"[{timestamp}] Possibly suspended: {username}\n")
+                flagged_log.write(f"[{timestamp}] Possibly suspended or hidden: {username}\n")
             return False
 
         page.wait_for_timeout(random.randint(3000, 7000))
-        page.fill("input[placeholder='Your email address']", username)
+        page.fill("input#login-name2", username)
         page.fill("input[placeholder='Password']", password)
         page.click(".login-button")
         page.wait_for_timeout(5000)
