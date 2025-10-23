@@ -18,15 +18,17 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Install Chrome and ChromeDriver
+      - name: Install Chrome
+        continue-on-error: true
         run: |
           sudo apt-get update
           sudo apt-get install -y wget unzip xvfb libxi6 libgconf-2-4 libnss3 libxss1 libasound2 fonts-liberation
-
           wget -q -O chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
           sudo dpkg -i chrome.deb || true
           sudo apt-get install -f -y
 
+      - name: Install ChromeDriver
+        run: |
           CHROME_VERSION=$(google-chrome --version | grep -oP '\d+\.\d+\.\d+\.\d+')
           DRIVER_VERSION=$(curl -sS https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_VERSION || curl -sS https://chromedriver.storage.googleapis.com/LATEST_RELEASE)
           wget -q https://chromedriver.storage.googleapis.com/$DRIVER_VERSION/chromedriver_linux64.zip
