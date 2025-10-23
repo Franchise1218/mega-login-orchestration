@@ -1,6 +1,7 @@
 import os
 import time
 import tempfile
+import subprocess
 from flask import Flask
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -19,8 +20,12 @@ FAILED_LOGINS_FILE = os.getenv("FAILED_LOGINS_FILE", "failed_logins.txt")
 RETRY_LOG_DIR = os.getenv("RETRY_LOG_DIR", "retry_logs")
 RESULT_LOG_FILE = "login_results.txt"
 
+# Log Chrome version for CI visibility
+print("Chrome version:", subprocess.getoutput("google-chrome --version"))
+
 def create_driver():
     options = Options()
+    options.binary_location = "/usr/bin/google-chrome"
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
