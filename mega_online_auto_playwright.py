@@ -13,10 +13,16 @@ RESULT_LOG_FILE = "login_results.txt"
 
 def login_account(username, password, page):
     try:
+        # Force logout to avoid auto-login redirect
+        page.context.clear_cookies()
+        page.goto("https://mega.nz/logout")
+        page.wait_for_timeout(2000)
+
+        # Now go to login page
         page.goto("https://mega.nz/login", timeout=30000)
 
-        # Skip clicking hidden button — go straight to login form
-        page.wait_for_selector("input[placeholder='Your email address']", timeout=10000)
+        # Wait for login form to appear
+        page.wait_for_selector("form.login-register-block, input[placeholder='Your email address']", timeout=15000)
 
         page.fill("input[placeholder='Your email address']", username)
         page.fill("input[placeholder='Password']", password)
