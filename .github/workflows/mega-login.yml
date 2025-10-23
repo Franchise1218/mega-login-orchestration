@@ -7,7 +7,7 @@ on:
 
 jobs:
   run-orchestration:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04  # ✅ Pin to stable version
 
     steps:
       - name: Checkout repository
