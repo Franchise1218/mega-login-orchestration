@@ -20,6 +20,8 @@ jobs:
 
       - name: Install dependencies
         run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb chromium-chromedriver
           pip install flask selenium
 
       - name: Create log files if missing
@@ -27,11 +29,11 @@ jobs:
           touch LOGS.txt failed_logins.txt
           mkdir -p retry_logs
 
-      - name: Run orchestration
+      - name: Run orchestration with Xvfb
         env:
           CHROMEDRIVER_PATH: "/usr/bin/chromedriver"
           LOGIN_FILE: "LOGS.txt"
           FAILED_LOGINS_FILE: "failed_logins.txt"
           RETRY_LOG_DIR: "retry_logs"
         run: |
-          python mega_online_auto.py
+          xvfb-run --auto-servernum --server-args='-screen 0 1920x1080x24' python mega_online_auto.py
