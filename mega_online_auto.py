@@ -63,7 +63,8 @@ def login_account(username, password, driver):
 def run_login_batch():
     start_time = time.time()
     options = Options()
-    options.add_argument("--headless")
+    options.add_argument("--start-maximized")
+    options.add_argument("--disable-gpu")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     service = Service(CHROMEDRIVER_PATH)
@@ -107,7 +108,8 @@ def run_login_batch():
 def retry_failed_logins(failed_accounts):
     print("Starting retry phase...")
     options = Options()
-    options.add_argument("--headless")
+    options.add_argument("--start-maximized")
+    options.add_argument("--disable-gpu")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     service = Service(CHROMEDRIVER_PATH)
