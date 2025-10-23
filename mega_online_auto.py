@@ -21,12 +21,16 @@ RESULT_LOG_FILE = "login_results.txt"
 
 def create_driver():
     options = Options()
-    options.add_argument("--start-maximized")
-    options.add_argument("--disable-gpu")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--disable-extensions")
+    options.add_argument("--disable-setuid-sandbox")
+    options.add_argument("--remote-debugging-port=9222")
+    options.add_argument("--window-size=1920,1080")
+    options.add_argument("--start-maximized")
+    options.add_argument("--user-agent=Mozilla/5.0")
 
-    # Assign unique user data directory
     user_data_dir = tempfile.mkdtemp()
     options.add_argument(f"--user-data-dir={user_data_dir}")
 
@@ -37,14 +41,11 @@ def login_account(username, password, driver):
     try:
         driver.get("https://mega.nz/login")
 
-        # Reveal login form
         WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.CLASS_NAME, "top-login-button"))
-        )
-        driver.find_element(By.CLASS_NAME, "top-login-button").click()
+        ).click()
         time.sleep(2)
 
-        # Wait for input fields
         WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, "input[placeholder='Your email address']"))
         )
@@ -66,10 +67,7 @@ def login_account(username, password, driver):
             pass
 
         time.sleep(5)
-        if "cloud" in driver.current_url or "fm" in driver.current_url:
-            return True
-        else:
-            return False
+        return "cloud" in driver.current_url or "fm" in driver.current_url
 
     except Exception as e:
         print(f"Exception for {username}: {e}")
