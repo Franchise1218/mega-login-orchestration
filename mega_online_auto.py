@@ -22,25 +22,18 @@ RESULT_LOG_FILE = "login_results.txt"
 # 🔐 Mega.nz Login Logic
 def login_account(username, password, driver):
     try:
-        driver.get("https://mega.nz/login")
+        # Direct login form rendering
+        driver.get("https://mega.nz/login?redirect=login")
 
-        # Reveal login form
-        WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.CLASS_NAME, "top-login-button"))
-        )
-        driver.find_element(By.CLASS_NAME, "top-login-button").click()
-        time.sleep(2)
-
-        # Fill in credentials
         WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, "input[placeholder='Your email address']"))
         )
+
         driver.find_element(By.CSS_SELECTOR, "input[placeholder='Your email address']").send_keys(username)
         driver.find_element(By.CSS_SELECTOR, "input[placeholder='Password']").send_keys(password)
         driver.find_element(By.CLASS_NAME, "login-button").click()
         time.sleep(5)
 
-        # Handle alert if present
         try:
             WebDriverWait(driver, 3).until(EC.alert_is_present())
             Alert(driver).accept()
@@ -48,7 +41,6 @@ def login_account(username, password, driver):
         except:
             pass
 
-        # Check for successful login
         time.sleep(5)
         if "cloud" in driver.current_url or "fm" in driver.current_url:
             return True
