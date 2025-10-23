@@ -1,5 +1,6 @@
 import os
 import time
+import random
 from datetime import datetime
 from flask import Flask
 from playwright.sync_api import sync_playwright
@@ -8,22 +9,28 @@ app = Flask(__name__)
 
 LOG_FILE = os.getenv("LOGIN_FILE", "LOGS.txt")
 FAILED_LOGINS_FILE = os.getenv("FAILED_LOGINS_FILE", "failed_logins.txt")
+FLAGGED_LOGINS_FILE = os.getenv("FLAGGED_LOGINS_FILE", "flagged_accounts.txt")
 RETRY_LOG_DIR = os.getenv("RETRY_LOG_DIR", "retry_logs")
 RESULT_LOG_FILE = "login_results.txt"
 
 def login_account(username, password, page):
     try:
-        # Force logout to avoid auto-login redirect
         page.context.clear_cookies()
         page.goto("https://mega.nz/logout")
         page.wait_for_timeout(2000)
 
-        # Now go to login page
         page.goto("https://mega.nz/login", timeout=30000)
-
-        # Wait for login form to appear
         page.wait_for_selector("form.login-register-block, input[placeholder='Your email address']", timeout=15000)
 
+        email_field = page.locator("input[placeholder='Your email address']")
+        if email_field.is_disabled():
+            print(f"{username} login field is disabled — possibly suspended.")
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            with open(FLAGGED_LOGINS_FILE, "a") as flagged_log:
+                flagged_log.write(f"[{timestamp}] Possibly suspended: {username}\n")
+            return False
+
+        page.wait_for_timeout(random.randint(3000, 7000))
         page.fill("input[placeholder='Your email address']", username)
         page.fill("input[placeholder='Password']", password)
         page.click(".login-button")
