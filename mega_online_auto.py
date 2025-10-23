@@ -12,21 +12,24 @@ from datetime import datetime
 
 app = Flask(__name__)
 
-# 🌐 Environment Variables and Defaults
 CHROMEDRIVER_PATH = os.getenv("CHROMEDRIVER_PATH", "/usr/bin/chromedriver")
 LOG_FILE = os.getenv("LOGIN_FILE", "LOGS.txt")
 FAILED_LOGINS_FILE = os.getenv("FAILED_LOGINS_FILE", "failed_logins.txt")
 RETRY_LOG_DIR = os.getenv("RETRY_LOG_DIR", "retry_logs")
 RESULT_LOG_FILE = "login_results.txt"
 
-# 🔐 Mega.nz Login Logic
 def login_account(username, password, driver):
     try:
-        # Direct login form rendering
         driver.get("https://mega.nz/login?redirect=login")
 
+        # Inject JS to force visibility in headless mode
+        driver.execute_script("""
+            document.querySelector('input[placeholder="Your email address"]').style.display = 'block';
+            document.querySelector('input[placeholder="Password"]').style.display = 'block';
+        """)
+
         WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "input[placeholder='Your email address']"))
+            EC.element_to_be_clickable((By.CSS_SELECTOR, "input[placeholder='Your email address']"))
         )
 
         driver.find_element(By.CSS_SELECTOR, "input[placeholder='Your email address']").send_keys(username)
@@ -51,7 +54,6 @@ def login_account(username, password, driver):
         print(f"Exception for {username}: {e}")
         return False
 
-# 🚀 Batch Login Orchestration
 def run_login_batch():
     start_time = time.time()
     options = Options()
@@ -96,7 +98,6 @@ def run_login_batch():
     if failed_accounts:
         retry_failed_logins(failed_accounts)
 
-# 🔁 Retry Logic for Failed Accounts
 def retry_failed_logins(failed_accounts):
     print("Starting retry phase...")
     options = Options()
@@ -120,12 +121,10 @@ def retry_failed_logins(failed_accounts):
     finally:
         driver.quit()
 
-# 🌐 Flask Trigger Endpoint
 @app.route("/run", methods=["GET"])
 def trigger_run():
     run_login_batch()
     return "Batch login orchestration triggered."
 
-# 🧭 Entry Point
 if __name__ == "__main__":
     run_login_batch()
