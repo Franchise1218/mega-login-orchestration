@@ -7,7 +7,7 @@ on:
 
 jobs:
   run-orchestration:
-    runs-on: ubuntu-22.04  # ✅ Pin to stable version
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout repository
@@ -18,14 +18,16 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Install Google Chrome and ChromeDriver
+      - name: Install Chrome and ChromeDriver
         run: |
           sudo apt-get update
           sudo apt-get install -y wget unzip xvfb libxi6 libgconf-2-4 libnss3 libxss1 libasound2 fonts-liberation
-          wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-          sudo dpkg -i google-chrome-stable_current_amd64.deb || sudo apt-get -f install -y
+
+          wget -q -O chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+          sudo dpkg -i chrome.deb || sudo apt-get install -f -y
+
           CHROME_VERSION=$(google-chrome --version | grep -oP '\d+\.\d+\.\d+\.\d+')
-          wget https://chromedriver.storage.googleapis.com/${CHROME_VERSION}/chromedriver_linux64.zip
+          wget -q https://chromedriver.storage.googleapis.com/$CHROME_VERSION/chromedriver_linux64.zip
           unzip chromedriver_linux64.zip
           sudo mv chromedriver /usr/bin/chromedriver
           sudo chmod +x /usr/bin/chromedriver
