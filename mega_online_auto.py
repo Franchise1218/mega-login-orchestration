@@ -1,5 +1,6 @@
 import os
 import time
+import tempfile
 from flask import Flask
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -17,6 +18,20 @@ LOG_FILE = os.getenv("LOGIN_FILE", "LOGS.txt")
 FAILED_LOGINS_FILE = os.getenv("FAILED_LOGINS_FILE", "failed_logins.txt")
 RETRY_LOG_DIR = os.getenv("RETRY_LOG_DIR", "retry_logs")
 RESULT_LOG_FILE = "login_results.txt"
+
+def create_driver():
+    options = Options()
+    options.add_argument("--start-maximized")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+
+    # Assign unique user data directory
+    user_data_dir = tempfile.mkdtemp()
+    options.add_argument(f"--user-data-dir={user_data_dir}")
+
+    service = Service(CHROMEDRIVER_PATH)
+    return webdriver.Chrome(service=service, options=options)
 
 def login_account(username, password, driver):
     try:
@@ -62,13 +77,7 @@ def login_account(username, password, driver):
 
 def run_login_batch():
     start_time = time.time()
-    options = Options()
-    options.add_argument("--start-maximized")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    service = Service(CHROMEDRIVER_PATH)
-    driver = webdriver.Chrome(service=service, options=options)
+    driver = create_driver()
 
     failed_accounts = []
     processed = succeeded = failed = 0
@@ -107,13 +116,7 @@ def run_login_batch():
 
 def retry_failed_logins(failed_accounts):
     print("Starting retry phase...")
-    options = Options()
-    options.add_argument("--start-maximized")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    service = Service(CHROMEDRIVER_PATH)
-    driver = webdriver.Chrome(service=service, options=options)
+    driver = create_driver()
 
     try:
         for username, password in failed_accounts:
