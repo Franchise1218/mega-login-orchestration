@@ -5,6 +5,9 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.alert import Alert
 from datetime import datetime
 
 app = Flask(__name__)
@@ -18,26 +21,24 @@ RESULT_LOG_FILE = "login_results.txt"
 def login_account(username, password, driver):
     try:
         driver.get("https://mega.nz/login")
-        time.sleep(2)  # Let the page load
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "input[placeholder='Your email address']"))
+        )
 
-        # Fill in email
-        email_input = driver.find_element(By.ID, "login-name2")
-        email_input.clear()
-        email_input.send_keys(username)
+        driver.find_element(By.CSS_SELECTOR, "input[placeholder='Your email address']").send_keys(username)
+        driver.find_element(By.CSS_SELECTOR, "input[placeholder='Password']").send_keys(password)
+        driver.find_element(By.CLASS_NAME, "login-button").click()
+        time.sleep(5)
 
-        # Fill in password
-        password_input = driver.find_element(By.ID, "login-password2")
-        password_input.clear()
-        password_input.send_keys(password)
+        try:
+            WebDriverWait(driver, 3).until(EC.alert_is_present())
+            Alert(driver).accept()
+            time.sleep(2)
+        except:
+            pass
 
-        # Click login button
-        login_button = driver.find_element(By.CSS_SELECTOR, ".login-button")
-        login_button.click()
-
-        time.sleep(5)  # Wait for redirect or error
-
-        # Check for success: redirected to file manager
-        if "fm" in driver.current_url:
+        time.sleep(5)
+        if "cloud" in driver.current_url or "fm" in driver.current_url:
             return True
         else:
             return False
