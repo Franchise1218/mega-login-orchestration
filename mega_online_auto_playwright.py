@@ -23,9 +23,9 @@ def login_account(username, password, page):
         # Clear local/session storage
         page.evaluate("localStorage.clear(); sessionStorage.clear();")
 
-        # Navigate to login page (shorter timeout)
-        page.goto("https://mega.nz/login", timeout=10000)
-        page.wait_for_selector("input#login-name2", timeout=5000)
+        # Navigate to login page (balanced timeout)
+        page.goto("https://mega.nz/login", timeout=15000)
+        page.wait_for_selector("input#login-name2", timeout=8000)
 
         email_field = page.locator("input#login-name2")
         if not email_field.is_visible() or email_field.is_disabled():
@@ -41,7 +41,7 @@ def login_account(username, password, page):
         page.click(".login-button")
 
         # Wait briefly for redirect
-        page.wait_for_timeout(random.randint(2000, 4000))
+        page.wait_for_timeout(random.randint(4000, 7000))
         current_url = page.url
 
         return "cloud" in current_url or "fm" in current_url
@@ -79,7 +79,7 @@ def run_login_batch():
                 except Exception as e:
                     print(f"Error for {username}: {e}")
                 finally:
-                    if time.time() - start > 15:
+                    if time.time() - start > 20:  # 20s cap per account
                         print(f"{username} exceeded time limit, skipping.")
                         success = False
 
