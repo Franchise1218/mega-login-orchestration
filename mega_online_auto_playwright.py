@@ -15,16 +15,14 @@ RESULT_LOG_FILE = "login_results.txt"
 
 def login_account(username, password, page):
     try:
-        # Clear cookies and session
+        # Reset session
         page.context.clear_cookies()
         page.goto("https://mega.nz/logout", timeout=10000)
         page.wait_for_timeout(1000)
-
-        # Clear local/session storage
         page.evaluate("localStorage.clear(); sessionStorage.clear();")
 
-        # Navigate to login page (balanced timeout)
-        page.goto("https://mega.nz/login", timeout=15000)
+        # Navigate to login page (less strict wait)
+        page.goto("https://mega.nz/login", timeout=15000, wait_until="domcontentloaded")
         page.wait_for_selector("input#login-name2", timeout=8000)
 
         email_field = page.locator("input#login-name2")
@@ -40,11 +38,14 @@ def login_account(username, password, page):
         page.fill("input[placeholder='Password']", password)
         page.click(".login-button")
 
-        # Wait briefly for redirect
-        page.wait_for_timeout(random.randint(4000, 7000))
-        current_url = page.url
-
-        return "cloud" in current_url or "fm" in current_url
+        # Wait for redirect by URL change instead of blind timeout
+        try:
+            page.wait_for_url("**/fm", timeout=10000)
+            return True
+        except TimeoutError:
+            # If redirect didn’t happen, still check current URL
+            current_url = page.url
+            return "cloud" in current_url or "fm" in current_url
 
     except TimeoutError as te:
         print(f"Timeout for {username}: {te}")
@@ -71,7 +72,7 @@ def run_login_batch():
                 username, password = line.split(",", 1)
                 print(f"Attempting login for {username}")
 
-                # Per-account timeout wrapper
+                # Per-account cap
                 start = time.time()
                 success = False
                 try:
@@ -79,7 +80,7 @@ def run_login_batch():
                 except Exception as e:
                     print(f"Error for {username}: {e}")
                 finally:
-                    if time.time() - start > 20:  # 20s cap per account
+                    if time.time() - start > 25:  # 25s max per account
                         print(f"{username} exceeded time limit, skipping.")
                         success = False
 
