@@ -12,6 +12,7 @@ FAILED_LOGINS_FILE = os.getenv("FAILED_LOGINS_FILE", "failed_logins.txt")
 FLAGGED_LOGINS_FILE = os.getenv("FLAGGED_LOGINS_FILE", "flagged_accounts.txt")
 RETRY_LOG_DIR = os.getenv("RETRY_LOG_DIR", "retry_logs")
 RESULT_LOG_FILE = "login_results.txt"
+FINAL_FAILED_FILE = "final_failed_accounts.txt"
 
 def login_account(username, password, page):
     try:
@@ -43,7 +44,6 @@ def login_account(username, password, page):
             page.wait_for_url("**/fm", timeout=10000)
             return True
         except TimeoutError:
-            # If redirect didn’t happen, still check current URL
             current_url = page.url
             return "cloud" in current_url or "fm" in current_url
 
@@ -104,10 +104,12 @@ def run_login_batch():
     print(f"Runtime: {round(time.time() - start_time, 2)} seconds")
 
     if failed_accounts:
-        retry_failed_logins(failed_accounts)
+        retry_failed_logins(failed_accounts, attempt=1, max_attempts=3)
 
-def retry_failed_logins(failed_accounts):
-    print("Starting retry phase...")
+def retry_failed_logins(failed_accounts, attempt=1, max_attempts=3):
+    print(f"Starting retry phase {attempt}...")
+
+    still_failed = []
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
@@ -115,17 +117,31 @@ def retry_failed_logins(failed_accounts):
         page = context.new_page()
 
         for username, password in failed_accounts:
-            print(f"Retrying login for {username}")
+            print(f"Retrying login for {username} (attempt {attempt})")
             success = login_account(username, password, page)
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             retry_log_path = os.path.join(RETRY_LOG_DIR, f"{username.replace('@', '_at_')}.txt")
             with open(retry_log_path, "a") as retry_log:
                 if success:
-                    retry_log.write(f"[{timestamp}] Retry succeeded for {username}\n")
+                    retry_log.write(f"[{timestamp}] Retry {attempt} succeeded for {username}\n")
                 else:
-                    retry_log.write(f"[{timestamp}] Retry failed for {username}\n")
+                    retry_log.write(f"[{timestamp}] Retry {attempt} failed for {username}\n")
+                    still_failed.append((username, password))
 
         browser.close()
+
+    # If we still have failures and haven't hit max attempts, retry again
+    if still_failed and attempt < max_attempts:
+        return retry_failed_logins(still_failed, attempt + 1, max_attempts)
+    else:
+        # Final summary of accounts that failed all attempts
+        if still_failed:
+            with open(FINAL_FAILED_FILE, "w") as final_log:
+                for username, _ in still_failed:
+                    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    final_log.write(f"[{timestamp}] Final failure after {max_attempts} attempts: {username}\n")
+            print(f"Final failures written to {FINAL_FAILED_FILE}")
+        return
 
 @app.route("/run", methods=["GET"])
 def trigger_run():
