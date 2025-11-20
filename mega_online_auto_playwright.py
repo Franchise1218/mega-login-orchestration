@@ -1,6 +1,5 @@
 import os
 import time
-import random
 from datetime import datetime
 from flask import Flask
 from playwright.sync_api import sync_playwright, TimeoutError
@@ -22,8 +21,8 @@ def login_account(username, password, page):
         page.wait_for_timeout(1000)
         page.evaluate("localStorage.clear(); sessionStorage.clear();")
 
-        # Navigate to login page (less strict wait)
-        page.goto("https://mega.nz/login", timeout=15000, wait_until="domcontentloaded")
+        # Navigate to login page, wait until fully loaded
+        page.goto("https://mega.nz/login", timeout=20000, wait_until="load")
         page.wait_for_selector("input#login-name2", timeout=8000)
 
         email_field = page.locator("input#login-name2")
@@ -39,7 +38,10 @@ def login_account(username, password, page):
         page.fill("input[placeholder='Password']", password)
         page.click(".login-button")
 
-        # Wait for redirect by URL change instead of blind timeout
+        # Wait for network to settle after login
+        page.wait_for_load_state("networkidle", timeout=15000)
+
+        # Check if we landed on dashboard
         try:
             page.wait_for_url("**/fm", timeout=10000)
             return True
@@ -98,6 +100,11 @@ def run_login_batch():
                         failed_accounts.append((username, password))
                         failed += 1
 
+                # Progress checkpoint every 25 accounts
+                if processed % 25 == 0:
+                    print(f"Progress update: {processed} accounts processed "
+                          f"({succeeded} succeeded, {failed} failed so far)")
+
         browser.close()
 
     print(f"Processed {processed} accounts: {succeeded} succeeded, {failed} failed.")
@@ -130,11 +137,9 @@ def retry_failed_logins(failed_accounts, attempt=1, max_attempts=3):
 
         browser.close()
 
-    # If we still have failures and haven't hit max attempts, retry again
     if still_failed and attempt < max_attempts:
         return retry_failed_logins(still_failed, attempt + 1, max_attempts)
     else:
-        # Final summary of accounts that failed all attempts
         if still_failed:
             with open(FINAL_FAILED_FILE, "w") as final_log:
                 for username, _ in still_failed:
