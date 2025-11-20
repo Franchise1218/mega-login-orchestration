@@ -145,7 +145,17 @@ def retry_failed_logins(failed_accounts, attempt=1, max_attempts=3):
                 for username, _ in still_failed:
                     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     final_log.write(f"[{timestamp}] Final failure after {max_attempts} attempts: {username}\n")
-            print(f"Final failures written to {FINAL_FAILED_FILE}")
+
+            # 🔥 End-of-run summary
+            print("\n=== FINAL FAILURE REPORT ===")
+            print(f"Total accounts failed after {max_attempts} attempts: {len(still_failed)}")
+            for username, _ in still_failed:
+                print(f" - {username}")
+            print("============================\n")
+
+        else:
+            print("\nAll accounts eventually succeeded after retries!\n")
+
         return
 
 @app.route("/run", methods=["GET"])
