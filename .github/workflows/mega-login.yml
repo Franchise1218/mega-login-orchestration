@@ -2,7 +2,6 @@ name: Mega Auto Login (Playwright)
 
 on:
   workflow_dispatch:
-  
 
 jobs:
   run-orchestration:
@@ -24,7 +23,7 @@ jobs:
 
       - name: Create log files if missing
         run: |
-          touch LOGS.txt failed_logins.txt
+          touch LOGS.txt failed_logins.txt flagged_accounts.txt login_results.txt
           mkdir -p retry_logs
 
       - name: Run orchestration
@@ -34,3 +33,15 @@ jobs:
           RETRY_LOG_DIR: "retry_logs"
         run: |
           python mega_online_auto_playwright.py
+
+      - name: Upload logs as artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: mega-login-logs
+          path: |
+            LOGS.txt
+            failed_logins.txt
+            flagged_accounts.txt
+            login_results.txt
+            retry_logs/
+            final_failed_accounts.txt
