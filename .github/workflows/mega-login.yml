@@ -2,6 +2,11 @@ name: Mega Auto Login (Playwright)
 
 on:
   workflow_dispatch:
+    inputs:
+      login_file:
+        description: "Name of the login file to use"
+        required: true
+        default: "LOGS.txt"
 
 jobs:
   run-orchestration:
@@ -23,25 +28,25 @@ jobs:
 
       - name: Create log files if missing
         run: |
-          touch LOGS.txt failed_logins.txt flagged_accounts.txt login_results.txt
+          touch ${{ github.event.inputs.login_file }} \
+                failed_logins.txt \
+                final_failed_accounts.txt \
+                login_results.txt
           mkdir -p retry_logs
 
       - name: Run orchestration
         env:
-          LOGIN_FILE: "LOGS.txt"
-          FAILED_LOGINS_FILE: "failed_logins.txt"
-          RETRY_LOG_DIR: "retry_logs"
+          LOGIN_FILE: ${{ github.event.inputs.login_file }}
         run: |
           python mega_online_auto_playwright.py
 
       - name: Upload logs as artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: mega-login-logs
+          name: mega-login-logs-${{ github.event.inputs.login_file }}-${{ github.run_id }}
           path: |
-            LOGS.txt
+            ${{ github.event.inputs.login_file }}
             failed_logins.txt
-            flagged_accounts.txt
+            final_failed_accounts.txt
             login_results.txt
             retry_logs/
-            final_failed_accounts.txt
